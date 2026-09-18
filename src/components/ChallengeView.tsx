@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Heart,
   Timer,
@@ -56,44 +56,7 @@ export const ChallengeView: React.FC<ChallengeViewProps> = ({
   const inputRef = useRef<HTMLInputElement | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Focus input on challenge change
-  useEffect(() => {
-    setInputText('');
-    setTimeLeft(questionTimerSeconds);
-    setShowHint(false);
-    setIsAnswered(false);
-    setEvaluation(null);
-    setPointsAwarded(0);
-
-    setTimeout(() => {
-      inputRef.current?.focus();
-    }, 150);
-  }, [question.id, questionTimerSeconds]);
-
-  // Question countdown timer
-  useEffect(() => {
-    if (isAnswered) {
-      if (timerRef.current) clearInterval(timerRef.current);
-      return;
-    }
-
-    timerRef.current = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) {
-          if (timerRef.current) clearInterval(timerRef.current);
-          handleTimeOut();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, [isAnswered, question.id]);
-
-  const handleTimeOut = () => {
+  const handleTimeOut = useCallback(() => {
     if (isAnswered) return;
     setIsAnswered(true);
     soundEffects.playWrong();
@@ -116,7 +79,51 @@ export const ChallengeView: React.FC<ChallengeViewProps> = ({
       pointsEarned: 0,
       streakAtTime: streak,
     });
-  };
+  }, [isAnswered, question, questionTimerSeconds, streak, onAnswerSubmit]);
+
+  // Focus input on challenge change
+  useEffect(() => {
+    setInputText('');
+    setTimeLeft(questionTimerSeconds);
+    setShowHint(false);
+    setIsAnswered(false);
+    setEvaluation(null);
+    setPointsAwarded(0);
+
+    const focusTimer = setTimeout(() => {
+      inputRef.current?.focus();
+    }, 150);
+    return () => clearTimeout(focusTimer);
+  }, [question.id, questionTimerSeconds]);
+
+  // Question countdown timer
+  useEffect(() => {
+    if (isAnswered) {
+      if (timerRef.current) clearInterval(timerRef.current);
+      return;
+    }
+
+    timerRef.current = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          if (timerRef.current) clearInterval(timerRef.current);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [isAnswered, question.id]);
+
+  // Handle timeout safely when timeLeft hits 0
+  useEffect(() => {
+    if (!isAnswered && timeLeft === 0) {
+      handleTimeOut();
+    }
+  }, [timeLeft, isAnswered, handleTimeOut]);
 
   const handleSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();

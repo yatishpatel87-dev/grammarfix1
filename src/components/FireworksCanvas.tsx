@@ -69,7 +69,6 @@ export const FireworksCanvas: React.FC<FireworksCanvasProps> = ({
       setSecondsRemaining((prev) => {
         if (prev <= 1) {
           clearInterval(timer);
-          onFinishCelebration();
           return 0;
         }
         return prev - 1;
@@ -77,7 +76,14 @@ export const FireworksCanvas: React.FC<FireworksCanvasProps> = ({
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [onFinishCelebration]);
+  }, []);
+
+  // Safe completion trigger when timer reaches 0
+  useEffect(() => {
+    if (secondsRemaining === 0) {
+      onFinishCelebration();
+    }
+  }, [secondsRemaining, onFinishCelebration]);
 
   // Rocket launcher function
   const launchRocket = (targetX?: number, targetY?: number) => {
